@@ -12,23 +12,23 @@ public class VueGeneral extends JFrame implements ActionListener {
 
     private JPanel panelMenue = new JPanel();
     private JButton btClients = new JButton("Clients");
-    private JButton btProprietaire = new JButton("Propriétaires");
-    private JButton btGites = new JButton("Gîtes");
-    private JButton btReservations = new JButton("Réservations");
+    private JButton btProprietaire = new JButton("Proprietaires");
+    private JButton btGites = new JButton("Gites");
+    private JButton btReservations = new JButton("Reservations");
     private JButton btContrats = new JButton("Contrats");
     private JButton btStats = new JButton("Stats");
     private JButton btQuitter = new JButton("Quitter");
 
     private static PanelClient unPanelClient = new PanelClient("Gestion des clients");
-    private static PanelProprietaire unPanelProprietaire = new PanelProprietaire("Gestion des propriétaires");
-    private static PanelGites unPanelGites = new PanelGites("Gestion des gîtes");
-    private static PanelReservation unPanelReservation = new PanelReservation("Gestion des réservations");
+    private static PanelProprietaire unPanelProprietaire = new PanelProprietaire("Gestion des proprietaires");
+    private static PanelGites unPanelGites = new PanelGites("Gestion des gites");
+    private static PanelReservation unPanelReservation = new PanelReservation("Gestion des reservations");
     private static PanelContrat unPanelContrat = new PanelContrat("Gestion des contrats");
     private static PanelStats unPanelStats = new PanelStats("Statistiques");
 
     public VueGeneral() {
         this.setTitle("Neige et Soleil - Application de gestion");
-        this.setBounds(10, 10, 1100, 600);
+        this.setBounds(10, 10, 1100, 680);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setResizable(false);
         this.setLayout(null);

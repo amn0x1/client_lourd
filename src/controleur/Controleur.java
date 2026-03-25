@@ -59,6 +59,12 @@ public class Controleur {
 		modele.insertGite(unGite);
 	}
 
+	/****************** Compatibilité ancien panel objets ******************/
+	public static void insertObjet(Objet unObjet) {
+		// Méthode conservée pour compatibilité avec PanelObjets.
+		// Le nouveau domaine utilise Gite/Reservation.
+	}
+
 	public static ArrayList<Gite> selectAllGites(String filtre) {
 		return modele.selectAllGites(filtre);
 	}

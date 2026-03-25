@@ -6,12 +6,12 @@ public class Reservation {
 	private int idreservation;
 	private Date dateDebutReservation, dateFinReservation;
 	private String nomClient, prenomClient, mailClient;
-	private int telephoneClient;
+	private int telephoneClient, nbPersonnes;
 	private int idGite;
 	private int idUser;
 	
 	public Reservation(int idreservation, Date dateDebutReservation, Date dateFinReservation, 
-			String nomClient, String prenomClient, String mailClient, int telephoneClient, 
+			String nomClient, String prenomClient, String mailClient, int telephoneClient, int nbPersonnes,
 			int idGite, int idUser) {
 		super();
 		this.idreservation = idreservation;
@@ -21,12 +21,13 @@ public class Reservation {
 		this.prenomClient = prenomClient;
 		this.mailClient = mailClient;
 		this.telephoneClient = telephoneClient;
+		this.nbPersonnes = nbPersonnes;
 		this.idGite = idGite;
 		this.idUser = idUser;
 	}
 	
 	public Reservation(Date dateDebutReservation, Date dateFinReservation, 
-			String nomClient, String prenomClient, String mailClient, int telephoneClient, 
+			String nomClient, String prenomClient, String mailClient, int telephoneClient, int nbPersonnes,
 			int idGite, int idUser) {
 		super();
 		this.idreservation = 0;
@@ -36,6 +37,7 @@ public class Reservation {
 		this.prenomClient = prenomClient;
 		this.mailClient = mailClient;
 		this.telephoneClient = telephoneClient;
+		this.nbPersonnes = nbPersonnes;
 		this.idGite = idGite;
 		this.idUser = idUser;
 	}
@@ -94,6 +96,14 @@ public class Reservation {
 
 	public void setTelephoneClient(int telephoneClient) {
 		this.telephoneClient = telephoneClient;
+	}
+
+	public int getNbPersonnes() {
+		return nbPersonnes;
+	}
+
+	public void setNbPersonnes(int nbPersonnes) {
+		this.nbPersonnes = nbPersonnes;
 	}
 
 	public int getIdGite() {

@@ -5,6 +5,8 @@ import java.awt.GridLayout;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -17,6 +19,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 
 import controleur.Contrat;
+import controleur.Client;
 import controleur.Controleur;
 import controleur.Gite;
 import controleur.Proprietaire;
@@ -33,12 +36,16 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
 
     private JSpinner spnDateDebut;
     private JSpinner spnDateFin;
-    private JTextField txtNomClient = new JTextField();
-    private JTextField txtPrenomClient = new JTextField();
-    private JTextField txtMailClient = new JTextField();
-    private JTextField txtTelephone = new JTextField();
+    private JComboBox<String> cbxClient = new JComboBox<String>();
+    private JTextField txtPrixNuit = new JTextField();
+    private JTextField txtNbPersonnes = new JTextField();
     private JComboBox<String> cbxGite = new JComboBox<String>();
-    private JComboBox<String> cbxProprietaire = new JComboBox<String>();
+    private JTextField txtProprietaire = new JTextField();
+    private ArrayList<Client> lesClientsCache = new ArrayList<Client>();
+    private ArrayList<Gite> lesGitesCache = new ArrayList<Gite>();
+    private ArrayList<Proprietaire> lesProprietairesCache = new ArrayList<Proprietaire>();
+    /** Alignee sur les lignes du tableau (meme ordre que selectAllReservations). */
+    private ArrayList<Reservation> lesReservationsAffichees = new ArrayList<Reservation>();
 
     private JTextField txtFiltre = new JTextField();
     private JButton btFilter = new JButton("Filtrer");
@@ -47,7 +54,7 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
     private JButton btValider = new JButton("Valider");
     private JButton btSupprimer = new JButton("Supprimer");
     private JButton btModifier = new JButton("Modifier");
-    private JButton btContratCreer = new JButton("Créer contrat");
+    private JButton btContratCreer = new JButton("Creer contrat");
     private JButton btContratVoir = new JButton("Voir contrat");
 
     private JLabel lbNbReservations = new JLabel();
@@ -60,36 +67,35 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
 
         this.panelForm.setBackground(AppStyle.ICE_BLUE);
         this.panelForm.setLayout(new GridLayout(8, 2, 12, 12));
-        this.panelForm.setBounds(40, 70, 380, 360);
+        this.panelForm.setBounds(40, 70, 380, 380);
         this.panelForm.setBorder(AppStyle.CARD_BORDER);
 
         this.spnDateDebut = createDateSpinner();
         this.spnDateFin = createDateSpinner();
-        addFormLabel("Date début :");
+        addFormLabel("Date debut :");
         this.panelForm.add(this.spnDateDebut);
         addFormLabel("Date fin :");
         this.panelForm.add(this.spnDateFin);
-        addFormLabel("Nom client :");
-        this.panelForm.add(this.txtNomClient);
-        addFormLabel("Prénom client :");
-        this.panelForm.add(this.txtPrenomClient);
-        addFormLabel("Email client :");
-        this.panelForm.add(this.txtMailClient);
-        addFormLabel("Téléphone :");
-        this.panelForm.add(this.txtTelephone);
-        addFormLabel("Gîte :");
+        addFormLabel("Client :");
+        this.panelForm.add(this.cbxClient);
+        addFormLabel("Nb personnes :");
+        this.panelForm.add(this.txtNbPersonnes);
+        addFormLabel("Gite :");
         this.panelForm.add(this.cbxGite);
-        addFormLabel("Propriétaire :");
-        this.panelForm.add(this.cbxProprietaire);
+        addFormLabel("Prix par nuit :");
+        this.panelForm.add(this.txtPrixNuit);
+        addFormLabel("Proprietaire :");
+        this.panelForm.add(this.txtProprietaire);
 
         styleDateSpinner(spnDateDebut);
         styleDateSpinner(spnDateFin);
-        styleInput(txtNomClient);
-        styleInput(txtPrenomClient);
-        styleInput(txtMailClient);
-        styleInput(txtTelephone);
+        styleCombo(cbxClient);
+        styleInput(txtNbPersonnes);
         styleCombo(cbxGite);
-        styleCombo(cbxProprietaire);
+        styleInput(txtPrixNuit);
+        styleInput(txtProprietaire);
+        this.txtPrixNuit.setEnabled(false);
+        this.txtProprietaire.setEnabled(false);
 
         styleButton(btAnnuler, AppStyle.TEXT_SECONDARY);
         styleButton(btValider, AppStyle.SUCCESS_GREEN);
@@ -107,7 +113,8 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         panelBoutons.add(this.btSupprimer);
         panelBoutons.add(this.btContratCreer);
         panelBoutons.add(this.btContratVoir);
-        panelBoutons.setBounds(40, 435, 380, 62);
+        /* 2 lignes + vgap : 62px coupait les boutons (bordures + police). */
+        panelBoutons.setBounds(40, 455, 380, 92);
 
         this.add(this.panelForm);
         this.add(panelBoutons);
@@ -141,8 +148,10 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         this.btFilter.addActionListener(this);
         this.btModifier.addActionListener(this);
         this.btSupprimer.addActionListener(this);
+        this.cbxClient.addActionListener(this);
+        this.cbxGite.addActionListener(this);
 
-        String entetes[] = { "ID", "Date début", "Date fin", "Nom", "Prénom", "Email", "Tél", "Gîte", "Proprio", "Contrat" };
+        String entetes[] = { "ID", "Date debut", "Date fin", "Pers", "Gite", "Proprio", "Totale", "Contrat" };
         this.unTableau = new Tableau(this.obtenirDonnes(""), entetes);
         this.tableReservations = new JTable(this.unTableau);
         styleTable(tableReservations);
@@ -156,15 +165,18 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int numLigne = tableReservations.getSelectedRow();
-                if (numLigne >= 0) {
+                if (numLigne >= 0 && numLigne < lesReservationsAffichees.size()) {
+                    Reservation r = lesReservationsAffichees.get(numLigne);
                     setSpinnerDate(spnDateDebut, unTableau.getValueAt(numLigne, 1).toString());
                     setSpinnerDate(spnDateFin, unTableau.getValueAt(numLigne, 2).toString());
-                    txtNomClient.setText(unTableau.getValueAt(numLigne, 3).toString());
-                    txtPrenomClient.setText(unTableau.getValueAt(numLigne, 4).toString());
-                    txtMailClient.setText(unTableau.getValueAt(numLigne, 5).toString());
-                    txtTelephone.setText(unTableau.getValueAt(numLigne, 6).toString());
-                    cbxGite.setSelectedItem(unTableau.getValueAt(numLigne, 7).toString());
-                    cbxProprietaire.setSelectedItem(unTableau.getValueAt(numLigne, 8).toString());
+                    setClientSelectionByNomPrenom(r.getNomClient(), r.getPrenomClient());
+                    txtNbPersonnes.setText(String.valueOf(r.getNbPersonnes()));
+                    for (Gite g : lesGitesCache) {
+                        if (g.getIdgite() == r.getIdGite()) {
+                            cbxGite.setSelectedItem(g.getIdgite() + " - " + g.getNomGite());
+                            break;
+                        }
+                    }
                     btModifier.setEnabled(true);
                     btSupprimer.setEnabled(true);
                     btContratCreer.setEnabled(true);
@@ -187,37 +199,41 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
 
         this.lbNbReservations.setFont(AppStyle.FONT_LABEL);
         this.lbNbReservations.setForeground(AppStyle.TEXT_PRIMARY);
-        this.lbNbReservations.setText("Nombre de réservations : " + unTableau.getRowCount());
+        this.lbNbReservations.setText("Nombre de reservations : " + unTableau.getRowCount());
         this.lbNbReservations.setBounds(430, 460, 400, 25);
         this.add(this.lbNbReservations);
     }
 
     private void remplirCBX() {
+        String selectedClient = this.cbxClient.getSelectedItem() != null ? this.cbxClient.getSelectedItem().toString() : null;
         String selectedGite = this.cbxGite.getSelectedItem() != null ? this.cbxGite.getSelectedItem().toString() : null;
-        String selectedProprio = this.cbxProprietaire.getSelectedItem() != null ? this.cbxProprietaire.getSelectedItem().toString() : null;
 
+        this.cbxClient.removeAllItems();
         this.cbxGite.removeAllItems();
-        this.cbxProprietaire.removeAllItems();
 
-        ArrayList<Gite> lesGites = Controleur.selectAllGites("");
-        for (Gite unGite : lesGites) {
+        this.lesClientsCache = Controleur.selectAllClients("");
+        for (Client unClient : this.lesClientsCache) {
+            this.cbxClient.addItem(unClient.getIdclient() + " - " + unClient.getNom() + " " + unClient.getPrenom());
+        }
+        this.lesGitesCache = Controleur.selectAllGites("");
+        for (Gite unGite : this.lesGitesCache) {
             this.cbxGite.addItem(unGite.getIdgite() + " - " + unGite.getNomGite());
         }
-        ArrayList<Proprietaire> lesProprietaires = Controleur.selectAllProprietaires("");
-        for (Proprietaire unProp : lesProprietaires) {
-            this.cbxProprietaire.addItem(unProp.getIdproprietaire() + " - " + unProp.getNom());
-        }
+        this.lesProprietairesCache = Controleur.selectAllProprietaires("");
 
+        if (selectedClient != null && isItemInCombo(cbxClient, selectedClient)) {
+            this.cbxClient.setSelectedItem(selectedClient);
+        } else if (cbxClient.getItemCount() > 0) {
+            this.cbxClient.setSelectedIndex(0);
+        }
         if (selectedGite != null && isItemInCombo(cbxGite, selectedGite)) {
             this.cbxGite.setSelectedItem(selectedGite);
         } else if (cbxGite.getItemCount() > 0) {
             this.cbxGite.setSelectedIndex(0);
         }
-        if (selectedProprio != null && isItemInCombo(cbxProprietaire, selectedProprio)) {
-            this.cbxProprietaire.setSelectedItem(selectedProprio);
-        } else if (cbxProprietaire.getItemCount() > 0) {
-            this.cbxProprietaire.setSelectedIndex(0);
-        }
+        updateClientFieldsFromSelection();
+        updateProprietaireForSelectedGite();
+        updatePrixNuitForSelectedGite();
     }
 
     private boolean isItemInCombo(JComboBox<String> cbx, String item) {
@@ -233,7 +249,7 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         if (visible) {
             remplirCBX();
             this.unTableau.setDonnees(this.obtenirDonnes(this.txtFiltre.getText()));
-            this.lbNbReservations.setText("Nombre de réservations : " + unTableau.getRowCount());
+            this.lbNbReservations.setText("Nombre de reservations : " + unTableau.getRowCount());
         }
     }
 
@@ -341,22 +357,53 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         ArrayList<Reservation> lesReservations = Controleur.selectAllReservations(filtre);
         ArrayList<Gite> lesGites = Controleur.selectAllGites("");
         ArrayList<Proprietaire> lesProprietaires = Controleur.selectAllProprietaires("");
-        Object[][] matrice = new Object[lesReservations.size()][10];
+        Object[][] matrice = new Object[lesReservations.size()][8];
         int i = 0;
         for (Reservation uneRes : lesReservations) {
             matrice[i][0] = uneRes.getIdreservation();
             matrice[i][1] = uneRes.getDateDebutReservation() != null ? DATE_FORMAT.format(uneRes.getDateDebutReservation()) : "";
             matrice[i][2] = uneRes.getDateFinReservation() != null ? DATE_FORMAT.format(uneRes.getDateFinReservation()) : "";
-            matrice[i][3] = uneRes.getNomClient();
-            matrice[i][4] = uneRes.getPrenomClient();
-            matrice[i][5] = uneRes.getMailClient();
-            matrice[i][6] = uneRes.getTelephoneClient();
-            matrice[i][7] = uneRes.getIdGite() + " - " + getGiteNom(uneRes.getIdGite(), lesGites);
-            matrice[i][8] = uneRes.getIdUser() + " - " + getProprietaireNom(uneRes.getIdUser(), lesProprietaires);
-            matrice[i][9] = Controleur.hasContrat(uneRes.getIdreservation()) ? "Oui" : "Non";
+            matrice[i][3] = uneRes.getNbPersonnes();
+            matrice[i][4] = uneRes.getIdGite() + " - " + getGiteNom(uneRes.getIdGite(), lesGites);
+            matrice[i][5] = uneRes.getIdUser() + " - " + getProprietaireNom(uneRes.getIdUser(), lesProprietaires);
+            matrice[i][6] = String.format("%.2f", calculerTotalReservation(uneRes, lesGites));
+            matrice[i][7] = Controleur.hasContrat(uneRes.getIdreservation()) ? "Oui" : "Non";
             i++;
         }
+        this.lesReservationsAffichees = lesReservations;
         return matrice;
+    }
+
+    private double calculerTotalReservation(Reservation uneRes, ArrayList<Gite> lesGites) {
+        double prixNuit = getPrixNuitByIdGite(uneRes.getIdGite(), lesGites);
+        long nbJours = getNbJours(uneRes.getDateDebutReservation(), uneRes.getDateFinReservation());
+        double base = prixNuit * nbJours * uneRes.getNbPersonnes();
+        double ajustement = getAjustementSaisonnier(uneRes.getDateDebutReservation());
+        return base * ajustement;
+    }
+
+    private double getPrixNuitByIdGite(int idGite, ArrayList<Gite> lesGites) {
+        for (Gite g : lesGites) {
+            if (g.getIdgite() == idGite) return g.getPrixNuitGite();
+        }
+        return 0.0;
+    }
+
+    private long getNbJours(Date dateDebut, Date dateFin) {
+        if (dateDebut == null || dateFin == null) return 1;
+        LocalDate debut = dateDebut.toLocalDate();
+        LocalDate fin = dateFin.toLocalDate();
+        long jours = ChronoUnit.DAYS.between(debut, fin);
+        return Math.max(1, jours);
+    }
+
+    private double getAjustementSaisonnier(Date dateDebut) {
+        if (dateDebut == null) return 1.0;
+        int mois = dateDebut.toLocalDate().getMonthValue();
+        if (mois >= 3 && mois <= 9) {
+            return 1.10; // +10% mars -> septembre
+        }
+        return 0.90; // -10% octobre -> fevrier
     }
 
     private String getGiteNom(int idGite, ArrayList<Gite> lesGites) {
@@ -373,6 +420,58 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         return "";
     }
 
+    private void updateProprietaireForSelectedGite() {
+        if (this.cbxGite.getSelectedItem() == null) {
+            this.txtProprietaire.setText("");
+            return;
+        }
+        int idGite = Integer.parseInt(this.cbxGite.getSelectedItem().toString().split(" - ")[0]);
+        for (Gite g : this.lesGitesCache) {
+            if (g.getIdgite() == idGite) {
+                for (Proprietaire p : this.lesProprietairesCache) {
+                    if (p.getIdproprietaire() == g.getIdUser()) {
+                        this.txtProprietaire.setText(p.getIdproprietaire() + " - " + p.getNom());
+                        return;
+                    }
+                }
+            }
+        }
+        this.txtProprietaire.setText("");
+        this.txtPrixNuit.setText("");
+    }
+
+    private void updatePrixNuitForSelectedGite() {
+        if (this.cbxGite.getSelectedItem() == null) {
+            this.txtPrixNuit.setText("");
+            return;
+        }
+        int idGite = Integer.parseInt(this.cbxGite.getSelectedItem().toString().split(" - ")[0]);
+        for (Gite g : this.lesGitesCache) {
+            if (g.getIdgite() == idGite) {
+                this.txtPrixNuit.setText(String.format("%.2f", g.getPrixNuitGite()));
+                return;
+            }
+        }
+        this.txtPrixNuit.setText("");
+    }
+
+    private void updateClientFieldsFromSelection() {
+        // Champs nom/prenom supprimes visuellement, conserve seulement la selection client.
+    }
+
+    private void setClientSelectionByNomPrenom(String nom, String prenom) {
+        for (int i = 0; i < this.cbxClient.getItemCount(); i++) {
+            String item = this.cbxClient.getItemAt(i);
+            int idClient = Integer.parseInt(item.split(" - ")[0]);
+            for (Client c : this.lesClientsCache) {
+                if (c.getIdclient() == idClient && c.getNom().equals(nom) && c.getPrenom().equals(prenom)) {
+                    this.cbxClient.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == this.btAnnuler) {
@@ -382,7 +481,12 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         } else if (e.getSource() == this.btFilter) {
             String filtre = this.txtFiltre.getText();
             this.unTableau.setDonnees(this.obtenirDonnes(filtre));
-            this.lbNbReservations.setText("Nombre de réservations : " + unTableau.getRowCount());
+            this.lbNbReservations.setText("Nombre de reservations : " + unTableau.getRowCount());
+        } else if (e.getSource() == this.cbxClient) {
+            updateClientFieldsFromSelection();
+        } else if (e.getSource() == this.cbxGite) {
+            updateProprietaireForSelectedGite();
+            updatePrixNuitForSelectedGite();
         } else if (e.getSource() == this.btModifier) {
             this.updateReservation();
         } else         if (e.getSource() == this.btSupprimer) {
@@ -400,11 +504,11 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         int idReservation = Integer.parseInt(unTableau.getValueAt(numLigne, 0).toString());
 
         if (Controleur.hasContrat(idReservation)) {
-            JOptionPane.showMessageDialog(this, "Un contrat existe déjà pour cette réservation.");
+            JOptionPane.showMessageDialog(this, "Un contrat existe deja pour cette reservation.");
             return;
         }
 
-        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Créer un contrat", true);
+        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Creer un contrat", true);
         dialog.setLayout(new java.awt.BorderLayout(10, 10));
         dialog.getContentPane().setBackground(AppStyle.SNOW_WHITE);
 
@@ -414,17 +518,22 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
 
         JTextField txtTitre = new JTextField(30);
         txtTitre.setFont(AppStyle.FONT_INPUT);
-        txtTitre.setText("Contrat - Réservation n°" + idReservation);
+        txtTitre.setText("Contrat - Reservation n" + idReservation);
         JTextArea txtContenu = new JTextArea(10, 40);
         txtContenu.setFont(AppStyle.FONT_INPUT);
         txtContenu.setLineWrap(true);
         txtContenu.setWrapStyleWord(true);
-        String contenuDefaut = "CONTRAT DE LOCATION SAISONNIÈRE\n\n"
+        String nomClientContrat = "";
+        if (numLigne >= 0 && numLigne < lesReservationsAffichees.size()) {
+            Reservation r = lesReservationsAffichees.get(numLigne);
+            nomClientContrat = r.getNomClient() + " " + r.getPrenomClient();
+        }
+        String contenuDefaut = "CONTRAT DE LOCATION SAISONNIERE\n\n"
                 + "Entre les parties :\n"
-                + "- Le propriétaire du gîte\n"
-                + "- Le client : " + unTableau.getValueAt(numLigne, 3) + " " + unTableau.getValueAt(numLigne, 4) + "\n\n"
-                + "Période : du " + unTableau.getValueAt(numLigne, 1) + " au " + unTableau.getValueAt(numLigne, 2) + "\n\n"
-                + "Conditions générales : ...";
+                + "- Le proprietaire du gite\n"
+                + "- Le client : " + nomClientContrat.trim() + "\n\n"
+                + "Periode : du " + unTableau.getValueAt(numLigne, 1) + " au " + unTableau.getValueAt(numLigne, 2) + "\n\n"
+                + "Conditions generales : ...";
         txtContenu.setText(contenuDefaut);
 
         JPanel pTitre = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
@@ -459,7 +568,7 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
             Date dateCreation = new Date(System.currentTimeMillis());
             Contrat unContrat = new Contrat(idReservation, dateCreation, titre, contenu);
             Controleur.insertContrat(unContrat);
-            JOptionPane.showMessageDialog(this, "Contrat créé avec succès");
+            JOptionPane.showMessageDialog(this, "Contrat cree avec succes");
             unTableau.setDonnees(obtenirDonnes(txtFiltre.getText()));
             dialog.dispose();
         });
@@ -475,11 +584,11 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
 
         Contrat unContrat = Controleur.selectContratByReservation(idReservation);
         if (unContrat == null) {
-            JOptionPane.showMessageDialog(this, "Aucun contrat pour cette réservation.");
+            JOptionPane.showMessageDialog(this, "Aucun contrat pour cette reservation.");
             return;
         }
 
-        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Contrat - Réservation n°" + idReservation, true);
+        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Contrat - Reservation n" + idReservation, true);
         dialog.setLayout(new java.awt.BorderLayout(10, 10));
         dialog.getContentPane().setBackground(AppStyle.SNOW_WHITE);
 
@@ -489,7 +598,7 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         txtAffichage.setLineWrap(true);
         txtAffichage.setWrapStyleWord(true);
         txtAffichage.setText("Titre : " + (unContrat.getTitre() != null ? unContrat.getTitre() : "") + "\n"
-                + "Date de création : " + (unContrat.getDateCreation() != null ? DATE_FORMAT.format(unContrat.getDateCreation()) : "") + "\n\n"
+                + "Date de creation : " + (unContrat.getDateCreation() != null ? DATE_FORMAT.format(unContrat.getDateCreation()) : "") + "\n\n"
                 + "--- CONTENU ---\n\n" + (unContrat.getContenu() != null ? unContrat.getContenu() : ""));
 
         JScrollPane scroll = new JScrollPane(txtAffichage);
@@ -519,7 +628,7 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
                     JOptionPane.YES_NO_OPTION);
             if (retour == JOptionPane.YES_OPTION) {
                 Controleur.deleteContrat(unContrat.getIdContrat());
-                JOptionPane.showMessageDialog(this, "Contrat supprimé avec succès");
+                JOptionPane.showMessageDialog(this, "Contrat supprime avec succes");
                 unTableau.setDonnees(obtenirDonnes(txtFiltre.getText()));
                 btContratCreer.setEnabled(true);
                 btContratVoir.setEnabled(false);
@@ -583,7 +692,7 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
             unContrat.setTitre(titre);
             unContrat.setContenu(contenu);
             Controleur.updateContrat(unContrat);
-            JOptionPane.showMessageDialog(this, "Contrat modifié avec succès");
+            JOptionPane.showMessageDialog(this, "Contrat modifie avec succes");
             unTableau.setDonnees(obtenirDonnes(txtFiltre.getText()));
             dialog.dispose();
         });
@@ -596,12 +705,12 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         Calendar aujourdhui = Calendar.getInstance();
         this.spnDateDebut.setValue(aujourdhui.getTime());
         this.spnDateFin.setValue(aujourdhui.getTime());
-        this.txtNomClient.setText("");
-        this.txtPrenomClient.setText("");
-        this.txtMailClient.setText("");
-        this.txtTelephone.setText("");
+        this.txtNbPersonnes.setText("1");
+        if (cbxClient.getItemCount() > 0) this.cbxClient.setSelectedIndex(0);
+        updateClientFieldsFromSelection();
         if (cbxGite.getItemCount() > 0) this.cbxGite.setSelectedIndex(0);
-        if (cbxProprietaire.getItemCount() > 0) this.cbxProprietaire.setSelectedIndex(0);
+        updateProprietaireForSelectedGite();
+        updatePrixNuitForSelectedGite();
         this.btModifier.setEnabled(false);
         this.btSupprimer.setEnabled(false);
         this.btContratCreer.setEnabled(false);
@@ -612,36 +721,60 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
         try {
             Date dateDebut = getSpinnerDateAsSql(this.spnDateDebut);
             Date dateFin = getSpinnerDateAsSql(this.spnDateFin);
-            String nom = this.txtNomClient.getText().trim();
-            String prenom = this.txtPrenomClient.getText().trim();
-            String mail = this.txtMailClient.getText().trim();
-            int tel = Integer.parseInt(this.txtTelephone.getText().trim());
+            int nbPersonnes = Integer.parseInt(this.txtNbPersonnes.getText().trim());
             int idGite = Integer.parseInt(this.cbxGite.getSelectedItem().toString().split(" - ")[0]);
-            int idUser = Integer.parseInt(this.cbxProprietaire.getSelectedItem().toString().split(" - ")[0]);
+            int idClient = Integer.parseInt(this.cbxClient.getSelectedItem().toString().split(" - ")[0]);
+            String nom = "";
+            String prenom = "";
+            String mail = "";
+            int tel = 0;
+            for (Client c : this.lesClientsCache) {
+                if (c.getIdclient() == idClient) {
+                    nom = c.getNom();
+                    prenom = c.getPrenom();
+                    mail = c.getEmail();
+                    break;
+                }
+            }
+            int idUser = -1;
+            for (Gite g : this.lesGitesCache) {
+                if (g.getIdgite() == idGite) {
+                    idUser = g.getIdUser();
+                    break;
+                }
+            }
 
             if (nom.isEmpty() || prenom.isEmpty() || mail.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs obligatoires.");
                 return;
             }
+            if (nbPersonnes <= 0) {
+                JOptionPane.showMessageDialog(this, "Le nombre de personnes doit etre superieur a 0.");
+                return;
+            }
+            if (idUser <= 0) {
+                JOptionPane.showMessageDialog(this, "Aucun proprietaire trouve pour le gite selectionne.");
+                return;
+            }
 
             if (dateDebut.after(dateFin)) {
-                JOptionPane.showMessageDialog(this, "La date de début ne peut pas être supérieure à la date de fin.");
+                JOptionPane.showMessageDialog(this, "La date de debut ne peut pas etre superieure a la date de fin.");
                 return;
             }
 
             if (Controleur.reservationChevauche(idGite, dateDebut, dateFin, 0)) {
-                JOptionPane.showMessageDialog(this, "Ce gîte est déjà réservé pour ces dates. Veuillez choisir d'autres dates.");
+                JOptionPane.showMessageDialog(this, "Ce gite est deja reserve pour ces dates. Veuillez choisir d'autres dates.");
                 return;
             }
 
-            Reservation uneRes = new Reservation(dateDebut, dateFin, nom, prenom, mail, tel, idGite, idUser);
+            Reservation uneRes = new Reservation(dateDebut, dateFin, nom, prenom, mail, tel, nbPersonnes, idGite, idUser);
             Controleur.insertReservation(uneRes);
-            JOptionPane.showMessageDialog(this, "Réservation créée avec succès");
+            JOptionPane.showMessageDialog(this, "Reservation creee avec succes");
             this.unTableau.setDonnees(this.obtenirDonnes(""));
             this.viderchamps();
-            this.lbNbReservations.setText("Nombre de réservations : " + unTableau.getRowCount());
+            this.lbNbReservations.setText("Nombre de reservations : " + unTableau.getRowCount());
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Le téléphone doit être un nombre.");
+            JOptionPane.showMessageDialog(this, "Le telephone doit etre un nombre.");
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, "Format de date invalide. Utilisez AAAA-MM-JJ (ex: 2025-02-15)");
         }
@@ -653,36 +786,60 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
             int id = Integer.parseInt(unTableau.getValueAt(numLigne, 0).toString());
             Date dateDebut = getSpinnerDateAsSql(this.spnDateDebut);
             Date dateFin = getSpinnerDateAsSql(this.spnDateFin);
-            String nom = this.txtNomClient.getText().trim();
-            String prenom = this.txtPrenomClient.getText().trim();
-            String mail = this.txtMailClient.getText().trim();
-            int tel = Integer.parseInt(this.txtTelephone.getText().trim());
+            int nbPersonnes = Integer.parseInt(this.txtNbPersonnes.getText().trim());
             int idGite = Integer.parseInt(this.cbxGite.getSelectedItem().toString().split(" - ")[0]);
-            int idUser = Integer.parseInt(this.cbxProprietaire.getSelectedItem().toString().split(" - ")[0]);
+            int idClient = Integer.parseInt(this.cbxClient.getSelectedItem().toString().split(" - ")[0]);
+            String nom = "";
+            String prenom = "";
+            String mail = "";
+            int tel = 0;
+            for (Client c : this.lesClientsCache) {
+                if (c.getIdclient() == idClient) {
+                    nom = c.getNom();
+                    prenom = c.getPrenom();
+                    mail = c.getEmail();
+                    break;
+                }
+            }
+            int idUser = -1;
+            for (Gite g : this.lesGitesCache) {
+                if (g.getIdgite() == idGite) {
+                    idUser = g.getIdUser();
+                    break;
+                }
+            }
 
             if (nom.isEmpty() || prenom.isEmpty() || mail.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs obligatoires.");
                 return;
             }
+            if (nbPersonnes <= 0) {
+                JOptionPane.showMessageDialog(this, "Le nombre de personnes doit etre superieur a 0.");
+                return;
+            }
+            if (idUser <= 0) {
+                JOptionPane.showMessageDialog(this, "Aucun proprietaire trouve pour le gite selectionne.");
+                return;
+            }
 
             if (dateDebut.after(dateFin)) {
-                JOptionPane.showMessageDialog(this, "La date de début ne peut pas être supérieure à la date de fin.");
+                JOptionPane.showMessageDialog(this, "La date de debut ne peut pas etre superieure a la date de fin.");
                 return;
             }
 
             if (Controleur.reservationChevauche(idGite, dateDebut, dateFin, id)) {
-                JOptionPane.showMessageDialog(this, "Ce gîte est déjà réservé pour ces dates. Veuillez choisir d'autres dates.");
+                JOptionPane.showMessageDialog(this, "Ce gite est deja reserve pour ces dates. Veuillez choisir d'autres dates.");
                 return;
             }
 
-            Reservation uneRes = new Reservation(id, dateDebut, dateFin, nom, prenom, mail, tel, idGite, idUser);
+            Reservation uneRes = new Reservation(id, dateDebut, dateFin, nom, prenom, mail, tel, nbPersonnes, idGite, idUser);
             Controleur.updateReservation(uneRes);
-            JOptionPane.showMessageDialog(this, "Réservation modifiée avec succès");
+            JOptionPane.showMessageDialog(this, "Reservation modifiee avec succes");
             this.unTableau.setDonnees(this.obtenirDonnes(""));
             this.viderchamps();
-            this.lbNbReservations.setText("Nombre de réservations : " + unTableau.getRowCount());
+            this.lbNbReservations.setText("Nombre de reservations : " + unTableau.getRowCount());
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Le téléphone doit être un nombre.");
+            JOptionPane.showMessageDialog(this, "Le telephone doit etre un nombre.");
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, "Format de date invalide. Utilisez AAAA-MM-JJ");
         }
@@ -691,14 +848,14 @@ public class PanelReservation extends PanelPrincipal implements ActionListener {
     private void deleteReservation() {
         int numLigne = tableReservations.getSelectedRow();
         int id = Integer.parseInt(unTableau.getValueAt(numLigne, 0).toString());
-        int retour = JOptionPane.showConfirmDialog(this, "Voulez-vous supprimer cette réservation ?", "Suppression",
+        int retour = JOptionPane.showConfirmDialog(this, "Voulez-vous supprimer cette reservation ?", "Suppression",
                 JOptionPane.YES_NO_OPTION);
         if (retour == JOptionPane.YES_OPTION) {
             Controleur.deleteReservation(id);
-            JOptionPane.showMessageDialog(this, "Réservation supprimée avec succès");
+            JOptionPane.showMessageDialog(this, "Reservation supprimee avec succes");
             this.viderchamps();
             this.unTableau.setDonnees(this.obtenirDonnes(""));
-            this.lbNbReservations.setText("Nombre de réservations : " + unTableau.getRowCount());
+            this.lbNbReservations.setText("Nombre de reservations : " + unTableau.getRowCount());
         }
     }
 }

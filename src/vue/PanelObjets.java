@@ -39,7 +39,7 @@ public class PanelObjets extends PanelPrincipal implements ActionListener {
         this.panelForm.setBounds(60, 120, 340, 280);
         this.panelForm.setBorder(AppStyle.CARD_BORDER);
 
-        addFormLabel("Désignation Objet :");
+        addFormLabel("Designation Objet :");
         this.panelForm.add(this.txtDesignation);
         addFormLabel("Date Achat :");
         this.panelForm.add(this.txtDateAchat);
@@ -150,7 +150,7 @@ public class PanelObjets extends PanelPrincipal implements ActionListener {
         } else {
             Objet unObjet = new Objet(designation, dateAchat, etat, idClient);
             Controleur.insertObjet(unObjet);
-            JOptionPane.showMessageDialog(this, "Objet inséré avec succès");
+            JOptionPane.showMessageDialog(this, "Objet insere avec succes");
             this.viderchamps();
         }
     }

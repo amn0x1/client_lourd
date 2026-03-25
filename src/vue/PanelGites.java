@@ -46,7 +46,7 @@ public class PanelGites extends PanelPrincipal implements ActionListener {
         int fieldHeight = 30;
         int spacing = 38;
 
-        addField("Nom du gîte :", txtNomGite, yPos, labelWidth, fieldWidth, fieldHeight);
+        addField("Nom du gite :", txtNomGite, yPos, labelWidth, fieldWidth, fieldHeight);
         yPos += spacing;
         addField("Adresse :", txtAdresseGite, yPos, labelWidth, fieldWidth, fieldHeight);
         yPos += spacing;
@@ -71,12 +71,12 @@ public class PanelGites extends PanelPrincipal implements ActionListener {
         this.panelForm.add(this.scrollDescription);
         yPos += 65;
 
-        addField("Capacité :", txtCapaciteGite, yPos, labelWidth, fieldWidth, fieldHeight);
+        addField("Capacite :", txtCapaciteGite, yPos, labelWidth, fieldWidth, fieldHeight);
         yPos += spacing;
         addField("Prix par nuit :", txtPrixNuitGite, yPos, labelWidth, fieldWidth, fieldHeight);
         yPos += spacing;
 
-        JLabel lbDisponibilite = new JLabel("Disponibilité :");
+        JLabel lbDisponibilite = new JLabel("Disponibilite :");
         lbDisponibilite.setFont(AppStyle.FONT_LABEL);
         lbDisponibilite.setForeground(AppStyle.TEXT_PRIMARY);
         lbDisponibilite.setBounds(15, yPos, labelWidth, 22);
@@ -88,7 +88,7 @@ public class PanelGites extends PanelPrincipal implements ActionListener {
         this.panelForm.add(this.cbxDisponibilite);
         yPos += spacing;
 
-        JLabel lbProprietaire = new JLabel("Propriétaire :");
+        JLabel lbProprietaire = new JLabel("Proprietaire :");
         lbProprietaire.setFont(AppStyle.FONT_LABEL);
         lbProprietaire.setForeground(AppStyle.TEXT_PRIMARY);
         lbProprietaire.setBounds(15, yPos, labelWidth, 22);
@@ -237,13 +237,21 @@ public class PanelGites extends PanelPrincipal implements ActionListener {
             if (nomGite.equals("") || adresseGite.equals("") || villeGite.equals("") || descriptionGite.equals("")) {
                 JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs");
             } else {
+                int nbAvant = Controleur.selectAllGites("").size();
                 Gite unGite = new Gite(nomGite, adresseGite, villeGite, codePostalGite, descriptionGite, capaciteGite, prixNuitGite, disponibiliteGite, idProprietaire);
                 Controleur.insertGite(unGite);
-                JOptionPane.showMessageDialog(this, "Gîte inséré avec succès");
-                this.viderchamps();
+                int nbApres = Controleur.selectAllGites("").size();
+                if (nbApres > nbAvant) {
+                    JOptionPane.showMessageDialog(this, "Gite insere avec succes");
+                    this.viderchamps();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Le gite n'a pas pu etre insere. Verifie la console (erreur SQL).");
+                }
             }
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Veuillez vérifier le format des champs numériques (code postal, capacité, prix).");
+            JOptionPane.showMessageDialog(this, "Veuillez verifier le format des champs numeriques (code postal, capacite, prix).");
+        } catch (NullPointerException ex) {
+            JOptionPane.showMessageDialog(this, "Aucun proprietaire selectionne. Cree d'abord un proprietaire.");
         }
     }
 

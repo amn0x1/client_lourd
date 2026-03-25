@@ -132,7 +132,7 @@ public class VueConnexion extends JFrame implements ActionListener, KeyListener 
         } else {
             Proprietaire unProprietaire = Controleur.selectWhereProprietaire(email, mdp);
             if (unProprietaire == null) {
-                JOptionPane.showConfirmDialog(this, "Veuillez vérifier vos identifiants");
+                JOptionPane.showConfirmDialog(this, "Veuillez verifier vos identifiants");
             } else {
                 JOptionPane.showConfirmDialog(this, "Bienvenue " + unProprietaire.getNom() + " " + unProprietaire.getPrenom());
                 NeigeEtSoleil.rendreVisibleVueConnexion(false);

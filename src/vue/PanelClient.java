@@ -29,6 +29,11 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
     private JTextField txtPrenom = new JTextField();
     private JTextField txtAdresse = new JTextField();
     private JTextField txtEmail = new JTextField();
+    private JPasswordField txtMdp = new JPasswordField();
+    private JPasswordField txtConfirmMdp = new JPasswordField();
+    private JButton btVoirMdp = new JButton("Voir");
+    private JButton btVoirConfirmMdp = new JButton("Voir");
+    private char defaultEchoChar;
 
     private JTextField txtFiltre = new JTextField();
     private JButton btFilter = new JButton("Filtrer");
@@ -39,6 +44,7 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
     private JButton btModifier = new JButton("Modifier");
 
     private JLabel lbNbClients = new JLabel();
+    private ArrayList<Client> cacheClients = new ArrayList<Client>();
 
     private JComboBox<String> cbxStatut = new JComboBox<String>();
 
@@ -50,18 +56,22 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
 
         // Formulaire stylé
         this.panelForm.setBackground(AppStyle.ICE_BLUE);
-        this.panelForm.setLayout(new GridLayout(7, 2, 12, 12));
+        this.panelForm.setLayout(new GridLayout(9, 2, 12, 12));
         this.panelForm.setBounds(40, 70, 360, 380);
         this.panelForm.setBorder(AppStyle.CARD_BORDER);
 
         addFormLabel("Nom Client");
         this.panelForm.add(this.txtNom);
-        addFormLabel("Prénom Client");
+        addFormLabel("Prenom Client");
         this.panelForm.add(this.txtPrenom);
         addFormLabel("Adresse Postale");
         this.panelForm.add(this.txtAdresse);
         addFormLabel("Email Client");
         this.panelForm.add(this.txtEmail);
+        addFormLabel("Mot de passe");
+        this.panelForm.add(createPasswordPanel(this.txtMdp, this.btVoirMdp));
+        addFormLabel("Confirmation");
+        this.panelForm.add(createPasswordPanel(this.txtConfirmMdp, this.btVoirConfirmMdp));
         addFormLabel("Statut");
         this.panelForm.add(this.cbxStatut);
 
@@ -69,7 +79,10 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
         styleInput(txtPrenom);
         styleInput(txtAdresse);
         styleInput(txtEmail);
+        styleInput(txtMdp);
+        styleInput(txtConfirmMdp);
         styleCombo(cbxStatut);
+        this.defaultEchoChar = this.txtMdp.getEchoChar();
 
         this.panelForm.add(this.btAnnuler);
         this.panelForm.add(this.btValider);
@@ -108,6 +121,8 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
         this.btFilter.addActionListener(this);
         this.btModifier.addActionListener(this);
         this.btSupprimer.addActionListener(this);
+        this.btVoirMdp.addActionListener(this);
+        this.btVoirConfirmMdp.addActionListener(this);
 
         // Tableau stylé
         String entetes[] = {"ID Client", "Nom", "Prenom", "Adresse", "Email", "Statut"};
@@ -131,6 +146,11 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
                     txtEmail.setText(unTableau.getValueAt(numLigne, 4).toString());
                     String statut = unTableau.getValueAt(numLigne, 5).toString();
                     cbxStatut.setSelectedItem(statut);
+                    if (numLigne < cacheClients.size()) {
+                        String mdp = cacheClients.get(numLigne).getMdp();
+                        txtMdp.setText(mdp != null ? mdp : "");
+                        txtConfirmMdp.setText(mdp != null ? mdp : "");
+                    }
                     btModifier.setEnabled(true);
                     btSupprimer.setEnabled(true);
                 }
@@ -166,6 +186,34 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
         txt.setBackground(AppStyle.SNOW_WHITE);
         txt.setMinimumSize(new java.awt.Dimension(120, 28));
         txt.setPreferredSize(new java.awt.Dimension(120, 28));
+    }
+
+    private JPanel createPasswordPanel(JPasswordField passwordField, JButton toggleButton) {
+        JPanel panel = new JPanel(new java.awt.BorderLayout(6, 0));
+        panel.setOpaque(false);
+        panel.add(passwordField, java.awt.BorderLayout.CENTER);
+        toggleButton.setFont(AppStyle.FONT_BUTTON);
+        toggleButton.setBackground(AppStyle.SKY_BLUE);
+        toggleButton.setForeground(AppStyle.SNOW_WHITE);
+        toggleButton.setFocusPainted(false);
+        toggleButton.setBorderPainted(false);
+        panel.add(toggleButton, java.awt.BorderLayout.EAST);
+        return panel;
+    }
+
+    private boolean isMotDePasseValide(String mdp) {
+        if (mdp == null || mdp.length() < 8) return false;
+        int maj = 0;
+        int min = 0;
+        int chiffres = 0;
+        int speciaux = 0;
+        for (char c : mdp.toCharArray()) {
+            if (Character.isUpperCase(c)) maj++;
+            else if (Character.isLowerCase(c)) min++;
+            else if (Character.isDigit(c)) chiffres++;
+            else speciaux++;
+        }
+        return maj >= 2 && min >= 2 && chiffres >= 2 && speciaux >= 2;
     }
 
     private void styleCombo(JComboBox<String> cbx) {
@@ -230,6 +278,7 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
             matrice[i][5] = unClient.getStatut();
             i++;
         }
+        this.cacheClients = lesClients;
         return matrice;
     }
 
@@ -247,6 +296,14 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
             this.updateClient();
         } else if (e.getSource() == this.btSupprimer) {
             this.deleteClient();
+        } else if (e.getSource() == this.btVoirMdp) {
+            boolean visible = this.txtMdp.getEchoChar() != (char) 0;
+            this.txtMdp.setEchoChar(visible ? (char) 0 : this.defaultEchoChar);
+            this.btVoirMdp.setText(visible ? "Masquer" : "Voir");
+        } else if (e.getSource() == this.btVoirConfirmMdp) {
+            boolean visible = this.txtConfirmMdp.getEchoChar() != (char) 0;
+            this.txtConfirmMdp.setEchoChar(visible ? (char) 0 : this.defaultEchoChar);
+            this.btVoirConfirmMdp.setText(visible ? "Masquer" : "Voir");
         }
     }
 
@@ -255,6 +312,12 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
         this.txtPrenom.setText("");
         this.txtAdresse.setText("");
         this.txtEmail.setText("");
+        this.txtMdp.setText("");
+        this.txtConfirmMdp.setText("");
+        this.txtMdp.setEchoChar(this.defaultEchoChar);
+        this.txtConfirmMdp.setEchoChar(this.defaultEchoChar);
+        this.btVoirMdp.setText("Voir");
+        this.btVoirConfirmMdp.setText("Voir");
         this.cbxStatut.setSelectedIndex(0);
         this.btModifier.setEnabled(false);
         this.btSupprimer.setEnabled(false);
@@ -267,7 +330,7 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
 
         if (retour == 0) {
             Controleur.deleteClient(idclient);
-            JOptionPane.showMessageDialog(this, "Le client a été supprimé avec succès");
+            JOptionPane.showMessageDialog(this, "Le client a ete supprime avec succes");
             this.viderchamps();
             this.unTableau.setDonnees(this.obtenirDonnes(""));
             this.lbNbClients.setText("Nombre de clients : " + unTableau.getRowCount());
@@ -281,14 +344,20 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
         String prenom = this.txtPrenom.getText();
         String adresse = this.txtAdresse.getText();
         String email = this.txtEmail.getText();
+        String mdp = new String(this.txtMdp.getPassword());
+        String confirmMdp = new String(this.txtConfirmMdp.getPassword());
         String statut = this.cbxStatut.getSelectedItem().toString();
 
         if (nom.equals("") || prenom.equals("") || adresse.equals("") || email.equals("")) {
             JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.");
+        } else if (!mdp.equals(confirmMdp)) {
+            JOptionPane.showMessageDialog(this, "La confirmation du mot de passe ne correspond pas.");
+        } else if (!isMotDePasseValide(mdp)) {
+            JOptionPane.showMessageDialog(this, "Le mot de passe doit contenir au minimum 8 caracteres, 2 majuscules, 2 minuscules, 2 chiffres et 2 caracteres speciaux.");
         } else {
-            Client unClient = new Client(idclient, nom, prenom, adresse, email, statut);
+            Client unClient = new Client(idclient, nom, prenom, adresse, email, statut, mdp);
             Controleur.updateClient(unClient);
-            JOptionPane.showMessageDialog(this, "Le client a été modifié avec succès");
+            JOptionPane.showMessageDialog(this, "Le client a ete modifie avec succes");
             this.viderchamps();
             this.unTableau.setDonnees(this.obtenirDonnes(""));
             this.lbNbClients.setText("Nombre de clients : " + unTableau.getRowCount());
@@ -300,14 +369,20 @@ public class PanelClient extends PanelPrincipal implements ActionListener {
         String prenom = this.txtPrenom.getText();
         String adresse = this.txtAdresse.getText();
         String email = this.txtEmail.getText();
+        String mdp = new String(this.txtMdp.getPassword());
+        String confirmMdp = new String(this.txtConfirmMdp.getPassword());
         String statut = this.cbxStatut.getSelectedItem().toString();
 
         if (nom.equals("") || prenom.equals("") || adresse.equals("") || email.equals("")) {
             JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.");
+        } else if (!mdp.equals(confirmMdp)) {
+            JOptionPane.showMessageDialog(this, "La confirmation du mot de passe ne correspond pas.");
+        } else if (!isMotDePasseValide(mdp)) {
+            JOptionPane.showMessageDialog(this, "Le mot de passe doit contenir au minimum 8 caracteres, 2 majuscules, 2 minuscules, 2 chiffres et 2 caracteres speciaux.");
         } else {
-            Client unClient = new Client(nom, prenom, adresse, email, statut);
+            Client unClient = new Client(nom, prenom, adresse, email, statut, mdp);
             Controleur.insertClient(unClient);
-            JOptionPane.showMessageDialog(this, "Client inséré avec succès");
+            JOptionPane.showMessageDialog(this, "Client insere avec succes");
             this.unTableau.setDonnees(this.obtenirDonnes(""));
             this.viderchamps();
             this.lbNbClients.setText("Nombre de clients : " + unTableau.getRowCount());

@@ -14,6 +14,74 @@ import controleur.Reservation;
 public class modele {
 	private static bdd unebdd = new bdd ("localhost", "NeigeEtSoleil", "root", "");
 	
+	static {
+		initialiserSchema();
+	}
+	
+	private static void initialiserSchema() {
+		// Tables principales du projet NeigeEtSoleil
+		executerRequete("CREATE TABLE IF NOT EXISTS Users ("
+				+ "idUser INT AUTO_INCREMENT PRIMARY KEY,"
+				+ "prenomUser VARCHAR(50) NOT NULL,"
+				+ "nomUser VARCHAR(50) NOT NULL,"
+				+ "usernameUser VARCHAR(50) NOT NULL,"
+				+ "passwordUser VARCHAR(255) NOT NULL,"
+				+ "mailUser VARCHAR(100) NOT NULL,"
+				+ "roleUser VARCHAR(50) NOT NULL"
+				+ ");");
+		
+		executerRequete("CREATE TABLE IF NOT EXISTS Gite ("
+				+ "idGite INT AUTO_INCREMENT PRIMARY KEY,"
+				+ "nomGite VARCHAR(100) NOT NULL,"
+				+ "adresseGite VARCHAR(150) NOT NULL,"
+				+ "villeGite VARCHAR(100) NOT NULL,"
+				+ "codePostalGite INT NOT NULL,"
+				+ "descriptionGite TEXT NOT NULL,"
+				+ "capaciteGite INT NOT NULL,"
+				+ "prixNuitGite DECIMAL(10,2) NOT NULL,"
+				+ "disponibiliteGite BOOLEAN NOT NULL,"
+				+ "idUser INT,"
+				+ "FOREIGN KEY (idUser) REFERENCES Users(idUser)"
+				+ ");");
+		
+		executerRequete("CREATE TABLE IF NOT EXISTS Reservation ("
+				+ "idReservation INT AUTO_INCREMENT PRIMARY KEY,"
+				+ "dateDebutReservation DATE NOT NULL,"
+				+ "dateFinReservation DATE NOT NULL,"
+				+ "nomClient VARCHAR(100) NOT NULL,"
+				+ "prenomClient VARCHAR(100) NOT NULL,"
+				+ "mailClient VARCHAR(100) NOT NULL,"
+				+ "telephoneClient INT NOT NULL,"
+				+ "nbPersonnes INT NOT NULL DEFAULT 1,"
+				+ "idGite INT,"
+				+ "idUser INT,"
+				+ "FOREIGN KEY (idGite) REFERENCES Gite(idGite),"
+				+ "FOREIGN KEY (idUser) REFERENCES Users(idUser)"
+				+ ");");
+		executerRequete("ALTER TABLE Reservation ADD COLUMN IF NOT EXISTS nbPersonnes INT NOT NULL DEFAULT 1;");
+		
+		executerRequete("CREATE TABLE IF NOT EXISTS Contrat ("
+				+ "idContrat INT AUTO_INCREMENT PRIMARY KEY,"
+				+ "idReservation INT NOT NULL,"
+				+ "dateCreation DATE NOT NULL,"
+				+ "titre VARCHAR(200) NOT NULL,"
+				+ "contenu TEXT NOT NULL,"
+				+ "FOREIGN KEY (idReservation) REFERENCES Reservation(idReservation) ON DELETE CASCADE"
+				+ ");");
+		
+		// Compatibilité avec l'ancien panel client
+		executerRequete("CREATE TABLE IF NOT EXISTS client ("
+				+ "idclient INT AUTO_INCREMENT PRIMARY KEY,"
+				+ "nom VARCHAR(50) NOT NULL,"
+				+ "prenom VARCHAR(50) NOT NULL,"
+				+ "adresse VARCHAR(150) NOT NULL,"
+				+ "email VARCHAR(100) NOT NULL,"
+				+ "statut VARCHAR(50) NOT NULL,"
+				+ "mdp VARCHAR(255) NOT NULL"
+				+ ");");
+		executerRequete("ALTER TABLE client ADD COLUMN IF NOT EXISTS mdp VARCHAR(255) NOT NULL DEFAULT '';");
+	}
+	
 	/**************** Requetes Propriétaires ******************/
 	public static Proprietaire selectWhereProprietaire(String email, String mdp) {
 		Proprietaire unProprietaire = null;
@@ -100,9 +168,9 @@ public class modele {
 	public static void insertClient(Client unClient) {
 		
 		
-		String requete = "INSERT INTO client (nom, prenom, adresse, email, statut) VALUES ('"
+		String requete = "INSERT INTO client (nom, prenom, adresse, email, statut, mdp) VALUES ('"
 				+ unClient.getNom() + "','" + unClient.getPrenom() + "','" + unClient.getAdresse() + "','"
-				+ unClient.getEmail() + "','" + unClient.getStatut() + "');";
+				+ unClient.getEmail() + "','" + unClient.getStatut() + "','" + unClient.getMdp() + "');";
 		executerRequete(requete);
 		}
 	
@@ -114,7 +182,8 @@ public class modele {
 	public static void updateClient(Client unClient) {
 		String requete = "update client set nom ='" + unClient.getNom()
 		+ "', prenom='" + unClient.getPrenom() + "', adresse= '" + unClient.getAdresse()
-		+ "', email ='" + unClient.getEmail() + "', statut = '" + unClient.getStatut() + "' where idclient = "
+		+ "', email ='" + unClient.getEmail() + "', statut = '" + unClient.getStatut()
+		+ "', mdp = '" + unClient.getMdp() + "' where idclient = "
 		+ unClient.getIdclient() 
 		+ ";";
 		
@@ -139,7 +208,8 @@ public class modele {
 				Client unClient = new Client(
 						desResultats.getInt("idclient"), desResultats.getString("nom"), 
 						desResultats.getString("prenom"), desResultats.getString("adresse"), 
-						desResultats.getString("email"), desResultats.getString("statut"));
+						desResultats.getString("email"), desResultats.getString("statut"),
+						desResultats.getString("mdp"));
 			lesClients.add(unClient);
 			
 			}
@@ -155,10 +225,10 @@ public class modele {
 	
 	/**************** Requetes Réservations ******************/
 	public static void insertReservation(Reservation uneReservation) {
-		String requete = "INSERT INTO Reservation (dateDebutReservation, dateFinReservation, nomClient, prenomClient, mailClient, telephoneClient, idGite, idUser) VALUES ('"
+		String requete = "INSERT INTO Reservation (dateDebutReservation, dateFinReservation, nomClient, prenomClient, mailClient, telephoneClient, nbPersonnes, idGite, idUser) VALUES ('"
 				+ uneReservation.getDateDebutReservation() + "','" + uneReservation.getDateFinReservation() + "','"
 				+ uneReservation.getNomClient() + "','" + uneReservation.getPrenomClient() + "','"
-				+ uneReservation.getMailClient() + "'," + uneReservation.getTelephoneClient() + ","
+				+ uneReservation.getMailClient() + "'," + uneReservation.getTelephoneClient() + "," + uneReservation.getNbPersonnes() + ","
 				+ uneReservation.getIdGite() + "," + uneReservation.getIdUser() + ");";
 		executerRequete(requete);
 	}
@@ -168,7 +238,8 @@ public class modele {
 				+ "', dateFinReservation='" + uneReservation.getDateFinReservation() + "', nomClient='"
 				+ uneReservation.getNomClient() + "', prenomClient='" + uneReservation.getPrenomClient()
 				+ "', mailClient='" + uneReservation.getMailClient() + "', telephoneClient="
-				+ uneReservation.getTelephoneClient() + ", idGite=" + uneReservation.getIdGite() + ", idUser="
+				+ uneReservation.getTelephoneClient() + ", nbPersonnes=" + uneReservation.getNbPersonnes()
+				+ ", idGite=" + uneReservation.getIdGite() + ", idUser="
 				+ uneReservation.getIdUser() + " WHERE idReservation=" + uneReservation.getIdreservation() + ";";
 		executerRequete(requete);
 	}
@@ -225,7 +296,7 @@ public class modele {
 				Reservation uneRes = new Reservation(desResultats.getInt("idReservation"),
 						desResultats.getDate("dateDebutReservation"), desResultats.getDate("dateFinReservation"),
 						desResultats.getString("nomClient"), desResultats.getString("prenomClient"),
-						desResultats.getString("mailClient"), desResultats.getInt("telephoneClient"),
+						desResultats.getString("mailClient"), desResultats.getInt("telephoneClient"), desResultats.getInt("nbPersonnes"),
 						desResultats.getInt("idGite"), desResultats.getInt("idUser"));
 				lesReservations.add(uneRes);
 			}
@@ -324,6 +395,8 @@ public class modele {
 			unebdd.seDeconnecter();
 		}catch(SQLException exp) {
 			System.out.println("Erreur execution requete : "+requete);
+			System.out.println("Détails de l'erreur : " + exp.getMessage());
+			exp.printStackTrace();
 		}
 	}
 

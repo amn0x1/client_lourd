@@ -30,10 +30,12 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
 
     private JTextField txtFiltre = new JTextField();
     private JButton btFilter = new JButton("Filtrer");
-    private JButton btCreerContrat = new JButton("Créer contrat");
+    private JButton btCreerContrat = new JButton("Creer contrat");
     private JButton btOuvrirContrat = new JButton("Ouvrir contrat");
 
-    private JLabel lbInfo = new JLabel("Sélectionnez une réservation pour créer ou ouvrir un contrat");
+    private JLabel lbInfo = new JLabel("Selectionnez une reservation pour creer ou ouvrir un contrat");
+
+    private ArrayList<Reservation> lesReservationsAffichees = new ArrayList<Reservation>();
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
 
@@ -64,7 +66,7 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
         this.btCreerContrat.addActionListener(this);
         this.btOuvrirContrat.addActionListener(this);
 
-        String entetes[] = { "ID", "Date début", "Date fin", "Nom", "Prénom", "Email", "Tél", "Gîte", "Proprio", "Contrat" };
+        String entetes[] = { "ID", "Date debut", "Date fin", "Pers", "Gite", "Proprio", "Contrat" };
         this.unTableau = new Tableau(this.obtenirDonnes(""), entetes);
         this.tableReservations = new JTable(this.unTableau);
         styleTable(tableReservations);
@@ -169,21 +171,19 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
         ArrayList<Reservation> lesReservations = Controleur.selectAllReservations(filtre);
         ArrayList<Gite> lesGites = Controleur.selectAllGites("");
         ArrayList<Proprietaire> lesProprietaires = Controleur.selectAllProprietaires("");
-        Object[][] matrice = new Object[lesReservations.size()][10];
+        Object[][] matrice = new Object[lesReservations.size()][7];
         int i = 0;
         for (Reservation uneRes : lesReservations) {
             matrice[i][0] = uneRes.getIdreservation();
             matrice[i][1] = uneRes.getDateDebutReservation() != null ? DATE_FORMAT.format(uneRes.getDateDebutReservation()) : "";
             matrice[i][2] = uneRes.getDateFinReservation() != null ? DATE_FORMAT.format(uneRes.getDateFinReservation()) : "";
-            matrice[i][3] = uneRes.getNomClient();
-            matrice[i][4] = uneRes.getPrenomClient();
-            matrice[i][5] = uneRes.getMailClient();
-            matrice[i][6] = uneRes.getTelephoneClient();
-            matrice[i][7] = uneRes.getIdGite() + " - " + getGiteNom(uneRes.getIdGite(), lesGites);
-            matrice[i][8] = uneRes.getIdUser() + " - " + getProprietaireNom(uneRes.getIdUser(), lesProprietaires);
-            matrice[i][9] = Controleur.hasContrat(uneRes.getIdreservation()) ? "Oui" : "Non";
+            matrice[i][3] = uneRes.getNbPersonnes();
+            matrice[i][4] = uneRes.getIdGite() + " - " + getGiteNom(uneRes.getIdGite(), lesGites);
+            matrice[i][5] = uneRes.getIdUser() + " - " + getProprietaireNom(uneRes.getIdUser(), lesProprietaires);
+            matrice[i][6] = Controleur.hasContrat(uneRes.getIdreservation()) ? "Oui" : "Non";
             i++;
         }
+        this.lesReservationsAffichees = lesReservations;
         return matrice;
     }
 
@@ -229,11 +229,11 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
         int idReservation = Integer.parseInt(unTableau.getValueAt(numLigne, 0).toString());
 
         if (Controleur.hasContrat(idReservation)) {
-            JOptionPane.showMessageDialog(this, "Un contrat existe déjà pour cette réservation.");
+            JOptionPane.showMessageDialog(this, "Un contrat existe deja pour cette reservation.");
             return;
         }
 
-        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Créer un contrat", true);
+        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Creer un contrat", true);
         dialog.setLayout(new java.awt.BorderLayout(10, 10));
         dialog.getContentPane().setBackground(AppStyle.SNOW_WHITE);
 
@@ -243,17 +243,22 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
 
         JTextField txtTitre = new JTextField(30);
         txtTitre.setFont(AppStyle.FONT_INPUT);
-        txtTitre.setText("Contrat - Réservation n°" + idReservation);
+        txtTitre.setText("Contrat - Reservation n" + idReservation);
         JTextArea txtContenu = new JTextArea(10, 40);
         txtContenu.setFont(AppStyle.FONT_INPUT);
         txtContenu.setLineWrap(true);
         txtContenu.setWrapStyleWord(true);
-        String contenuDefaut = "CONTRAT DE LOCATION SAISONNIÈRE\n\n"
+        String nomClientContrat = "";
+        if (numLigne >= 0 && numLigne < lesReservationsAffichees.size()) {
+            Reservation r = lesReservationsAffichees.get(numLigne);
+            nomClientContrat = r.getNomClient() + " " + r.getPrenomClient();
+        }
+        String contenuDefaut = "CONTRAT DE LOCATION SAISONNIERE\n\n"
                 + "Entre les parties :\n"
-                + "- Le propriétaire du gîte\n"
-                + "- Le client : " + unTableau.getValueAt(numLigne, 3) + " " + unTableau.getValueAt(numLigne, 4) + "\n\n"
-                + "Période : du " + unTableau.getValueAt(numLigne, 1) + " au " + unTableau.getValueAt(numLigne, 2) + "\n\n"
-                + "Conditions générales : ...";
+                + "- Le proprietaire du gite\n"
+                + "- Le client : " + nomClientContrat.trim() + "\n\n"
+                + "Periode : du " + unTableau.getValueAt(numLigne, 1) + " au " + unTableau.getValueAt(numLigne, 2) + "\n\n"
+                + "Conditions generales : ...";
         txtContenu.setText(contenuDefaut);
 
         JPanel pTitre = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
@@ -288,7 +293,7 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
             Date dateCreation = new Date(System.currentTimeMillis());
             Contrat unContrat = new Contrat(idReservation, dateCreation, titre, contenu);
             Controleur.insertContrat(unContrat);
-            JOptionPane.showMessageDialog(this, "Contrat créé avec succès. Il apparaîtra dans la colonne Contrat du panneau Réservations.");
+            JOptionPane.showMessageDialog(this, "Contrat cree avec succes. Il apparaitra dans la colonne Contrat du panneau Reservations.");
             unTableau.setDonnees(obtenirDonnes(txtFiltre.getText()));
             mettreAJourBoutons();
             dialog.dispose();
@@ -305,11 +310,11 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
 
         Contrat unContrat = Controleur.selectContratByReservation(idReservation);
         if (unContrat == null) {
-            JOptionPane.showMessageDialog(this, "Aucun contrat pour cette réservation.");
+            JOptionPane.showMessageDialog(this, "Aucun contrat pour cette reservation.");
             return;
         }
 
-        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Contrat - Réservation n°" + idReservation, true);
+        JDialog dialog = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "Contrat - Reservation n" + idReservation, true);
         dialog.setLayout(new java.awt.BorderLayout(10, 10));
         dialog.getContentPane().setBackground(AppStyle.SNOW_WHITE);
 
@@ -319,7 +324,7 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
         txtAffichage.setLineWrap(true);
         txtAffichage.setWrapStyleWord(true);
         txtAffichage.setText("Titre : " + (unContrat.getTitre() != null ? unContrat.getTitre() : "") + "\n"
-                + "Date de création : " + (unContrat.getDateCreation() != null ? DATE_FORMAT.format(unContrat.getDateCreation()) : "") + "\n\n"
+                + "Date de creation : " + (unContrat.getDateCreation() != null ? DATE_FORMAT.format(unContrat.getDateCreation()) : "") + "\n\n"
                 + "--- CONTENU ---\n\n" + (unContrat.getContenu() != null ? unContrat.getContenu() : ""));
 
         JScrollPane scroll = new JScrollPane(txtAffichage);
@@ -349,7 +354,7 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
                     JOptionPane.YES_NO_OPTION);
             if (retour == JOptionPane.YES_OPTION) {
                 Controleur.deleteContrat(unContrat.getIdContrat());
-                JOptionPane.showMessageDialog(this, "Contrat supprimé avec succès");
+                JOptionPane.showMessageDialog(this, "Contrat supprime avec succes");
                 unTableau.setDonnees(obtenirDonnes(txtFiltre.getText()));
                 mettreAJourBoutons();
                 dialog.dispose();
@@ -412,7 +417,7 @@ public class PanelContrat extends PanelPrincipal implements ActionListener {
             unContrat.setTitre(titre);
             unContrat.setContenu(contenu);
             Controleur.updateContrat(unContrat);
-            JOptionPane.showMessageDialog(this, "Contrat modifié avec succès");
+            JOptionPane.showMessageDialog(this, "Contrat modifie avec succes");
             unTableau.setDonnees(obtenirDonnes(txtFiltre.getText()));
             mettreAJourBoutons();
             dialog.dispose();

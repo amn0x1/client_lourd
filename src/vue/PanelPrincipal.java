@@ -7,7 +7,7 @@ import javax.swing.*;
 public abstract class PanelPrincipal extends JPanel {
 
     public PanelPrincipal(String titre) {
-        this.setBounds(20, 60, 1060, 500);
+        this.setBounds(20, 60, 1060, 550);
         this.setBackground(AppStyle.SNOW_WHITE);
         this.setLayout(null);
         this.setBorder(AppStyle.PANEL_BORDER);

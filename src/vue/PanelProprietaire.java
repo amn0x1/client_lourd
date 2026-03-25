@@ -47,9 +47,9 @@ public class PanelProprietaire extends PanelPrincipal implements ActionListener 
         this.panelForm.setBounds(40, 70, 360, 360);
         this.panelForm.setBorder(AppStyle.CARD_BORDER);
 
-        addFormLabel("Nom Propriétaire");
+        addFormLabel("Nom Proprietaire");
         this.panelForm.add(this.txtNom);
-        addFormLabel("Prénom Propriétaire");
+        addFormLabel("Prenom Proprietaire");
         this.panelForm.add(this.txtPrenom);
         addFormLabel("Email");
         this.panelForm.add(this.txtEmail);
@@ -97,7 +97,7 @@ public class PanelProprietaire extends PanelPrincipal implements ActionListener 
         this.btModifier.addActionListener(this);
         this.btSupprimer.addActionListener(this);
 
-        String entetes[] = {"ID", "Nom", "Prenom", "Email", "Rôle"};
+        String entetes[] = {"ID", "Nom", "Prenom", "Email", "Role"};
         this.unTableau = new Tableau(this.obtenirDonnes(""), entetes);
         this.tableProprietaires = new JTable(this.unTableau);
         styleTable(tableProprietaires);
@@ -131,7 +131,7 @@ public class PanelProprietaire extends PanelPrincipal implements ActionListener 
 
         this.lbNbProprietaires.setFont(AppStyle.FONT_LABEL);
         this.lbNbProprietaires.setForeground(AppStyle.TEXT_PRIMARY);
-        this.lbNbProprietaires.setText("Nombre de propriétaires : " + unTableau.getRowCount());
+        this.lbNbProprietaires.setText("Nombre de proprietaires : " + unTableau.getRowCount());
         this.lbNbProprietaires.setBounds(430, 460, 400, 25);
         this.add(this.lbNbProprietaires);
     }
@@ -228,7 +228,7 @@ public class PanelProprietaire extends PanelPrincipal implements ActionListener 
         } else if (e.getSource() == this.btFilter) {
             String filtre = this.txtFiltre.getText();
             this.unTableau.setDonnees(this.obtenirDonnes(filtre));
-            this.lbNbProprietaires.setText("Nombre de propriétaires : " + unTableau.getRowCount());
+            this.lbNbProprietaires.setText("Nombre de proprietaires : " + unTableau.getRowCount());
         } else if (e.getSource() == this.btModifier) {
             this.updateProprietaire();
         } else if (e.getSource() == this.btSupprimer) {
@@ -248,14 +248,14 @@ public class PanelProprietaire extends PanelPrincipal implements ActionListener 
     public void deleteProprietaire() {
         int numLigne = tableProprietaires.getSelectedRow();
         int idproprietaire = Integer.parseInt(unTableau.getValueAt(numLigne, 0).toString());
-        int retour = JOptionPane.showConfirmDialog(this, "Voulez-vous supprimer ce propriétaire ?", "Suppression", JOptionPane.YES_NO_OPTION);
+        int retour = JOptionPane.showConfirmDialog(this, "Voulez-vous supprimer ce proprietaire ?", "Suppression", JOptionPane.YES_NO_OPTION);
 
         if (retour == 0) {
             Controleur.deleteProprietaire(idproprietaire);
-            JOptionPane.showMessageDialog(this, "Le propriétaire a été supprimé avec succès");
+            JOptionPane.showMessageDialog(this, "Le proprietaire a ete supprime avec succes");
             this.viderchamps();
             this.unTableau.setDonnees(this.obtenirDonnes(""));
-            this.lbNbProprietaires.setText("Nombre de propriétaires : " + unTableau.getRowCount());
+            this.lbNbProprietaires.setText("Nombre de proprietaires : " + unTableau.getRowCount());
         }
     }
 
@@ -272,10 +272,10 @@ public class PanelProprietaire extends PanelPrincipal implements ActionListener 
         } else {
             Proprietaire unProprietaire = new Proprietaire(idproprietaire, nom, prenom, email, mdp, "proprietaire");
             Controleur.updateProprietaire(unProprietaire);
-            JOptionPane.showMessageDialog(this, "Le propriétaire a été modifié avec succès");
+            JOptionPane.showMessageDialog(this, "Le proprietaire a ete modifie avec succes");
             this.viderchamps();
             this.unTableau.setDonnees(this.obtenirDonnes(""));
-            this.lbNbProprietaires.setText("Nombre de propriétaires : " + unTableau.getRowCount());
+            this.lbNbProprietaires.setText("Nombre de proprietaires : " + unTableau.getRowCount());
         }
     }
 
@@ -290,10 +290,10 @@ public class PanelProprietaire extends PanelPrincipal implements ActionListener 
         } else {
             Proprietaire unProprietaire = new Proprietaire(nom, prenom, email, mdp, "proprietaire");
             Controleur.insertProprietaire(unProprietaire);
-            JOptionPane.showMessageDialog(this, "Propriétaire inséré avec succès");
+            JOptionPane.showMessageDialog(this, "Proprietaire insere avec succes");
             this.unTableau.setDonnees(this.obtenirDonnes(""));
             this.viderchamps();
-            this.lbNbProprietaires.setText("Nombre de propriétaires : " + unTableau.getRowCount());
+            this.lbNbProprietaires.setText("Nombre de proprietaires : " + unTableau.getRowCount());
         }
     }
 }
